@@ -8,8 +8,9 @@ const stopBit = StopBits.One
 const expectedPackets = 512 # number of packet
 const packetLen = 21 # bytes
 const timeMaxSerial = 7 # seconds
- 
 
+const binFilePath = "/tmp/secrets.bin"
+ 
 type
   PacketK* = ref object
     address*: int             # position to begin the write of dataBytes
@@ -59,7 +60,14 @@ proc manageSecrets(messages: seq[string]) =
 
   for msx in messages:
     let packet = parsePacketK(msx)
-    #TODO
+    
+    for i in 0 .. packet.numBytes - 1:
+      binFile[packet.address + i] = packet.dataBytes[i]
+  
+  let f = open(binFilePath, fmWrite)
+  defer: f.close()
+  
+  discard f.writeBytes(binFile, 0, 4096)
 
 
 proc main() =
@@ -92,6 +100,7 @@ proc main() =
   if secrets.len == expectedPackets:
     echo "Received all packets!"
     manageSecrets(secrets)
+    echo "Procedure Complete!"
   else:  
     echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
 
@@ -105,5 +114,4 @@ proc testParsePacketK(msx:string): void =
 
 
 when isMainModule:
-  #main()
-  testParsePacketK("K30083de204ae16db5213")
+  main()
