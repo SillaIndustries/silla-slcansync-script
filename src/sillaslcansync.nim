@@ -1,4 +1,4 @@
-import serial, sequtils, strutils, strformat, streams, times, sequtils
+import serial, sequtils, strutils, strformat, streams, times
 
 const baudRate = 115200
 const parity = Parity.None
@@ -10,6 +10,14 @@ const packetLen = 21 # bytes
 const timeMaxSerial = 7 # seconds
  
 
+type
+  PacketK* = ref object
+    address*: int             # position to begin the write of dataBytes
+    numBytes*: int            # number of bytes to write
+    dataBytes*: seq[uint8]    # the data bytes
+
+
+# Check the availability of the serial port. Mysteriously it doesn't work
 proc checkSerial(serialName: string): bool =  
   let serialPorts = toSeq(listSerialPorts())
 
@@ -23,34 +31,35 @@ proc checkSerial(serialName: string): bool =
   return false  
 
 
-proc convertCharToHex(cHex: string): uint8 =
-  return (uint8) parseHexInt(cHex) 
+# Parse the message receive from serial into a proper type
+proc parsePacketK(msx: string): PacketK =
+  #      KAAALDDDDDDDDDDDDDDDD
+  # e.g. K01081680fbd95fd10ffb
+  # where:
+  #   K - Command
+  #   A - Packet address (from 0 to FF8)
+  #   L - Packet data length (8 Bytes)
+  #   D - Data Byte
+
+  let address = parseHexInt(fmt"0{msx[1 .. 3]}")
+  let numBytes = parseInt(fmt"{msx[4]}")
+  let dataChar = msx[5 .. ^1]
+  var dataBytes: seq[uint8]
+    
+  for i in 0 .. (numBytes - 1):
+    dataBytes.add(uint8(parseHexInt(dataChar[2*i .. 2*i+1])))
+
+  return PacketK(address: address, numBytes: numBytes, dataBytes: dataBytes) 
 
 
-#      KAAALDDDDDDDDDDDDDDDD
-# e.g. K01081680fbd95fd10ffb
-# where:
-#   K - Command
-#   A - Packet address (from 0 to FF8)
-#   L - Packet data length (8 Bytes)
-#   D - Data Byte
+# Creation of bin File from a list of K message. 
 proc manageSecrets(messages: seq[string]) =
   
   var binFile : array[4096, uint8]
 
   for msx in messages:
-    echo msx
-    # WIP
-    # let address = parseHexInt(fmt"0{msx[1 .. 3]}")
-    # let dataLen = parseInt(fmt"{msx[4]}")
-    # let data = msx[5 .. ^1]
-
-    # echo address
-    # echo dataLen
-    # echo data
-
-    # for i in 0 .. dataLen-1:
-    #   echo parseHexInt(data[i .. i+1])
+    let packet = parsePacketK(msx)
+    #TODO
 
 
 proc main() =
@@ -85,10 +94,16 @@ proc main() =
     manageSecrets(secrets)
   else:  
     echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
-   
+
+# Use for test the parsing of Packet K
+proc testParsePacketK(msx:string): void =
+  let packet = parsePacketK(msx)
+  echo fmt" message: {msx}"
+  echo fmt" address: {packet.address}"
+  echo fmt" numBytes: {packet.numBytes}"
+  echo fmt" dataBytes: {packet.dataBytes}"
+
 
 when isMainModule:
-  main()
-  # WIP
-  #var test = @["K00880203ed9c5bafa2c8"]
-  #manageSecrets(test)
+  #main()
+  testParsePacketK("K30083de204ae16db5213")
