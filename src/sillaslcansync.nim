@@ -7,16 +7,16 @@ const numBit = 8
 const stopBit = StopBits.One
 
 const expectedPackets = 512 # number of packet
-const packetLen = 21 # bytes
+const packetLen = 21 # byte
 const timeMaxSerial = 7 # seconds
 
 const binFilePath = "/tmp/secrets.bin"
  
 type
   PacketK* = ref object
-    address*: int             # position to begin the write of dataBytes
-    numBytes*: int            # number of bytes to write
-    dataBytes*: seq[uint8]    # the data bytes
+    address*: int             # position to begin the write of dataByte
+    numByte*: int             # number of byte to write
+    dataByte*: seq[uint8]     # the data byte
 
 
 # Check the availability of the serial port. Mysteriously it doesn't work
@@ -44,14 +44,14 @@ proc parsePacketK(msx: string): PacketK =
   #   D - Data Byte
 
   let address = parseHexInt(fmt"0{msx[1 .. 3]}")
-  let numBytes = parseInt(fmt"{msx[4]}")
+  let numByte = parseInt(fmt"{msx[4]}")
   let dataChar = msx[5 .. ^1]
-  var dataBytes: seq[uint8]
+  var dataByte: seq[uint8]
     
-  for i in 0 .. (numBytes - 1):
-    dataBytes.add(uint8(parseHexInt(dataChar[2*i .. 2*i+1])))
+  for i in 0 .. (numByte - 1):
+    dataByte.add(uint8(parseHexInt(dataChar[2*i .. 2*i+1])))
 
-  return PacketK(address: address, numBytes: numBytes, dataBytes: dataBytes) 
+  return PacketK(address: address, numByte: numByte, dataByte: dataByte) 
 
 
 # Creation of bin File from a list of K message. 
@@ -62,8 +62,8 @@ proc manageSecrets(messages: seq[string]) =
   for msx in messages:
     let packet = parsePacketK(msx)
     
-    for i in 0 .. packet.numBytes - 1:
-      binFile[packet.address + i] = packet.dataBytes[i]
+    for i in 0 .. packet.numByte - 1:
+      binFile[packet.address + i] = packet.dataByte[i]
   
   let f = open(binFilePath, fmWrite)
   defer: f.close()
@@ -112,8 +112,8 @@ proc testParsePacketK(msx:string): void =
   let packet = parsePacketK(msx)
   echo fmt" message: {msx}"
   echo fmt" address: {packet.address}"
-  echo fmt" numBytes: {packet.numBytes}"
-  echo fmt" dataBytes: {packet.dataBytes}"
+  echo fmt" numBytes: {packet.numByte}"
+  echo fmt" dataBytes: {packet.dataByte}"
 
 
 when isMainModule:
