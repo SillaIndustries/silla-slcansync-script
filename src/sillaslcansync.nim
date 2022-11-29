@@ -1,5 +1,6 @@
-import serial, sequtils, strutils, strformat, streams, times
+import serial, sequtils, strutils, strformat, streams, times, os
 
+const serialName = "/dev/ttyS1"
 const baudRate = 115200
 const parity = Parity.None
 const numBit = 8
@@ -71,7 +72,6 @@ proc manageSecrets(messages: seq[string]) =
 
 
 proc main() =
-  let serialName = "/dev/ttyS1"
   #if not checkSerial(serialName):
   #  echo fmt"The port {serialName} isn't available. Exit"
   #  quit(QuitFailure)
@@ -80,6 +80,8 @@ proc main() =
   defer: close(serialPort)
   #serialPort.setTimeouts(5000, 500)
   var secrets : seq[string]
+
+  discard tryRemoveFile(binFilePath)
 
   serialPort.writeLine("K\r\n")
   echo "Sending K message"
@@ -103,6 +105,7 @@ proc main() =
     echo "Procedure Complete!"
   else:  
     echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
+
 
 # Use for test the parsing of Packet K
 proc testParsePacketK(msx:string): void =
