@@ -1,0 +1,6 @@
+
+out/
+nimcache/
+testresults/
+
+*.log
