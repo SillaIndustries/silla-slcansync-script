@@ -3,6 +3,7 @@
 VERSION=`nimble dump --json | jq -r .version`
 
 nim c \
+-f \
 -d:VERSION="${1}" \
 -d:release \
 -d:linux \
