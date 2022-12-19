@@ -75,36 +75,38 @@ proc main() =
   #if not checkSerial(serialName):
   #  echo fmt"The port {serialName} isn't available. Exit"
   #  quit(QuitFailure)
-
+  
   let serialPort = newSerialStream(serialName, baudRate, parity, numBit, stopBit, Handshake.None, buffered=false)
   defer: close(serialPort)
-  #serialPort.setTimeouts(5000, 500)
+  serialPort.setTimeouts(5000, 500)
   var secrets : seq[string]
 
-  discard tryRemoveFile(binFilePath)
+  try:
+    discard tryRemoveFile(binFilePath)
 
-  serialPort.writeLine("K\r\n")
-  echo "Sending K message"
-  let sendKTimestamp = toUnix(getTime())
+    serialPort.writeLine("K\r\n")
+    echo "Sending K message"
+    let sendKTimestamp = toUnix(getTime())
 
-  while true:
-      let s = serialPort.readLine()
+    while true:
+        let s = serialPort.readLine()
+        if s[0] == 'K' and s.len == packetLen:
+          # It's a K packet!
+          secrets.add(s)
 
-      if s[0] == 'K' and s.len == packetLen:
-        # It's a K packet!
-        secrets.add(s)
+        if toUnix(getTime())  > sendKTimestamp + timeMaxSerial:
+          break
 
-      if toUnix(getTime())  > sendKTimestamp + timeMaxSerial:
-        break
-
-  serialPort.close()
-
-  if secrets.len == expectedPackets:
-    echo "Received all packets!"
-    manageSecrets(secrets)
-    echo "Procedure Complete!"
-  else:  
-    echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
+    if secrets.len == expectedPackets:
+      echo "Received all packets!"
+      manageSecrets(secrets)
+      echo "Procedure Complete!"
+    else:  
+      echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
+  except TimeoutError:
+    echo "Serial Timeout Error! Probably we read nothing from serial."   
+  finally:
+    serialPort.close()
 
 
 # Use for test the parsing of Packet K
