@@ -8,7 +8,7 @@ const stopBit = StopBits.One
 
 const expectedPackets = 512 # number of packet
 const packetLen = 21 # byte
-const timeMaxSerial = 7 # seconds
+const timeMaxSerial = 12 # seconds
 
 const binFilePath = "/tmp/secrets.bin"
  
@@ -93,16 +93,17 @@ proc main() =
         if s[0] == 'K' and s.len == packetLen:
           # It's a K packet!
           secrets.add(s)
-
-        if toUnix(getTime())  > sendKTimestamp + timeMaxSerial:
+          
+        if secrets.len == expectedPackets:      
+          echo "Received all packets!"
+          manageSecrets(secrets)
+          echo "Procedure Complete!"
           break
 
-    if secrets.len == expectedPackets:
-      echo "Received all packets!"
-      manageSecrets(secrets)
-      echo "Procedure Complete!"
-    else:  
-      echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
+        if toUnix(getTime())  > sendKTimestamp + timeMaxSerial:
+          echo fmt"Warning! We received only {secrets.len} of {expectedPackets} expected! Can't created the secrets bin!"
+          break
+
   except TimeoutError:
     echo "Serial Timeout Error! Probably we read nothing from serial."   
   finally:
